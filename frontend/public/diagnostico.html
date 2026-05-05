@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagnóstico de Permissões - BiblioTech</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      padding: 40px;
+    }
+
+    h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+      font-size: 2.5em;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 1.1em;
+    }
+
+    .card {
+      background: #f8f9fa;
+      border-left: 4px solid #667eea;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+    }
+
+    .card h2 {
+      color: #333;
+      margin-bottom: 15px;
+      font-size: 1.5em;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #dee2e6;
+    }
+
+    .info-row:last-child {
+      border-bottom: none;
+    }
+
+    .info-label {
+      font-weight: 600;
+      color: #495057;
+    }
+
+    .info-value {
+      color: #212529;
+      font-family: 'Courier New', monospace;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.9em;
+      font-weight: 600;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .status.warning {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1em;
+      font-weight: 600;
+      transition: all 0.3s;
+      margin-right: 10px;
+    }
+
+    .button:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .button.danger {
+      background: #dc3545;
+    }
+
+    .button.danger:hover {
+      background: #c82333;
+    }
+
+    .buttons {
+      margin-top: 30px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .error-message {
+      background: #f8d7da;
+      color: #721c24;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border-left: 4px solid #dc3545;
+    }
+
+    .success-message {
+      background: #d4edda;
+      color: #155724;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border-left: 4px solid #28a745;
+    }
+
+    .code-block {
+      background: #2d2d2d;
+      color: #f8f8f2;
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9em;
+      margin-top: 10px;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-left: 10px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 Diagnóstico de Permissões</h1>
+    <p class="subtitle">Ferramenta para identificar e resolver problemas de acesso ao painel administrativo</p>
+
+    <div id="resultados"></div>
+
+    <div class="buttons">
+      <button class="button" onclick="executarDiagnostico()">Executar Diagnóstico</button>
+      <button class="button danger" onclick="limparDados()">Limpar Dados e Fazer Logout</button>
+      <button class="button" onclick="window.location.href='/auth/login'">Ir para Login</button>
+    </div>
+  </div>
+
+  <script>
+    function executarDiagnostico() {
+      const resultados = document.getElementById('resultados');
+      resultados.innerHTML = '<div class="card"><h2>Analisando... <span class="loading"></span></h2></div>';
+
+      setTimeout(() => {
+        let html = '';
+
+        // 1. Verificar token
+        const token = localStorage.getItem('bibliotech_token');
+        const usuario = localStorage.getItem('bibliotech_usuario');
+
+        if (!token) {
+          html += `
+            <div class="error-message">
+              <strong>❌ Nenhum token encontrado!</strong><br>
+              Você não está autenticado. Faça login primeiro.
+            </div>
+          `;
+          resultados.innerHTML = html;
+          return;
+        }
+
+        html += `
+          <div class="card">
+            <h2>✅ Token Encontrado</h2>
+            <div class="info-row">
+              <span class="info-label">Token (primeiros 50 caracteres):</span>
+              <span class="info-value">${token.substring(0, 50)}...</span>
+            </div>
+          </div>
+        `;
+
+        // 2. Decodificar JWT
+        try {
+          const parts = token.split('.');
+          if (parts.length !== 3) {
+            throw new Error('Token inválido');
+          }
+
+          const payload = JSON.parse(atob(parts[1]));
+
+          const expDate = new Date(payload.exp * 1000);
+          const now = new Date();
+          const isExpired = expDate < now;
+
+          html += `
+            <div class="card">
+              <h2>📋 Dados do Token</h2>
+              <div class="info-row">
+                <span class="info-label">ID:</span>
+                <span class="info-value">${payload.id || 'N/A'}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Email:</span>
+                <span class="info-value">${payload.email || 'N/A'}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Nome:</span>
+                <span class="info-value">${payload.nome || 'N/A'}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Tipo:</span>
+                <span class="info-value">${payload.tipo || 'N/A'}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Access Level:</span>
+                <span class="info-value">${payload.accessLevel || 'N/A'}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Expira em:</span>
+                <span class="info-value">${expDate.toLocaleString('pt-BR')}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Status:</span>
+                <span class="status ${isExpired ? 'error' : 'success'}">
+                  ${isExpired ? '❌ EXPIRADO' : '✅ VÁLIDO'}
+                </span>
+              </div>
+            </div>
+          `;
+
+          // 3. Verificar permissões
+          if (isExpired) {
+            html += `
+              <div class="error-message">
+                <strong>❌ TOKEN EXPIRADO!</strong><br>
+                Seu token expirou. Você precisa fazer logout e login novamente para obter um novo token.
+              </div>
+            `;
+          } else if (payload.tipo === 'aluno') {
+            html += `
+              <div class="error-message">
+                <strong>⚠️ USUÁRIO SEM PERMISSÕES ADMINISTRATIVAS!</strong><br>
+                Você está logado como ALUNO. Para acessar o painel administrativo, você precisa estar logado com uma conta de BIBLIOTECÁRIO ou ADMIN.
+                <br><br>
+                <strong>Contas com acesso admin:</strong><br>
+                - admin@bibliotech.com (Admin completo)<br>
+                - admin.teste@email.com (Bibliotecário Sênior)
+              </div>
+            `;
+          } else if (payload.tipo === 'bibliotecario') {
+            html += `
+              <div class="success-message">
+                <strong>✅ Você tem permissões de BIBLIOTECÁRIO</strong><br>
+                Você deveria conseguir acessar a maioria das páginas administrativas.
+                <br><br>
+                <strong>Nota:</strong> Algumas páginas avançadas (como gerenciamento de permissões) podem requerer a conta ADMIN completa.
+              </div>
+            `;
+          } else if (payload.tipo === 'admin') {
+            html += `
+              <div class="success-message">
+                <strong>✅ Você tem permissões de ADMINISTRADOR</strong><br>
+                Você deveria ter acesso completo a todas as páginas administrativas.
+              </div>
+            `;
+          }
+
+          // 4. Payload completo
+          html += `
+            <div class="card">
+              <h2>🔧 Payload Completo (JSON)</h2>
+              <div class="code-block">${JSON.stringify(payload, null, 2)}</div>
+            </div>
+          `;
+
+        } catch (error) {
+          html += `
+            <div class="error-message">
+              <strong>❌ ERRO AO DECODIFICAR TOKEN!</strong><br>
+              ${error.message}<br>
+              O token pode estar corrompido. Faça logout e login novamente.
+            </div>
+          `;
+        }
+
+        // 5. Dados do usuário no localStorage
+        if (usuario) {
+          try {
+            const userData = JSON.parse(usuario);
+            html += `
+              <div class="card">
+                <h2>👤 Dados do Usuário (localStorage)</h2>
+                <div class="code-block">${JSON.stringify(userData, null, 2)}</div>
+              </div>
+            `;
+          } catch (e) {
+            html += `
+              <div class="error-message">
+                <strong>⚠️ Dados do usuário corrompidos no localStorage</strong>
+              </div>
+            `;
+          }
+        }
+
+        resultados.innerHTML = html;
+      }, 500);
+    }
+
+    function limparDados() {
+      if (confirm('Isso vai limpar todos os dados de autenticação e fazer logout. Confirma?')) {
+        localStorage.removeItem('bibliotech_token');
+        localStorage.removeItem('bibliotech_usuario');
+        sessionStorage.clear();
+
+        alert('✅ Dados limpos com sucesso! Redirecionando para o login...');
+        window.location.href = '/auth/login';
+      }
+    }
+
+    // Executar automaticamente ao carregar
+    window.addEventListener('load', executarDiagnostico);
+  </script>
+</body>
+</html>
