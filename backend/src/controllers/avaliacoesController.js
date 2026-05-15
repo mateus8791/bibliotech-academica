@@ -96,6 +96,9 @@ const criarAvaliacao = async (req, res) => {
     return res.status(400).json({ mensagem: 'livro_id e nota são obrigatórios.' });
   }
 
+  // comentario é NOT NULL no banco — garante string vazia se omitido
+  const comentarioFinal = comentario !== undefined && comentario !== null ? String(comentario).trim() : '';
+
   const notaNum = parseInt(nota, 10);
   if (isNaN(notaNum) || notaNum < 1 || notaNum > 5) {
     return res.status(400).json({ mensagem: 'nota deve ser um número inteiro entre 1 e 5.' });
@@ -124,7 +127,7 @@ const criarAvaliacao = async (req, res) => {
       `INSERT INTO avaliacoes (livro_id, usuario_id, nota, comentario, status)
        VALUES ($1, $2, $3, $4, 'ativa')
        RETURNING *`,
-      [livro_id, usuarioId, notaNum, comentario || null]
+      [livro_id, usuarioId, notaNum, comentarioFinal]
     );
 
     res.status(201).json(rows[0]);
