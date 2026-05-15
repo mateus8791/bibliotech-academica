@@ -32,6 +32,7 @@ const diagnosticoRoutes = require('./routes/diagnosticoRoutes'); // Diagnóstico
 const notificacoesRoutes = require('./routes/notificacoesRoutes'); // Notificações
 const preferenciasRoutes = require('./routes/preferenciasRoutes'); // Preferências do aluno
 const recomendacoesRoutes = require('./routes/recomendacoesRoutes'); // Recomendações de livros
+const avaliacoesRoutes = require('./routes/avaliacoesRoutes'); // Avaliações de livros
 
 const path = require('path');
 
@@ -99,6 +100,7 @@ app.use('/api', diagnosticoRoutes); // Diagnóstico de token
 app.use('/api', notificacoesRoutes); // Notificações
 app.use('/api/preferencias', preferenciasRoutes); // Preferências do aluno
 app.use('/api/recomendacoes', recomendacoesRoutes); // Recomendações de livros
+app.use('/api', avaliacoesRoutes); // Avaliações de livros
 
 // Rota principal de teste
 app.get('/', (req, res) => {
