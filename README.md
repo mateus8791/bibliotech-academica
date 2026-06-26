@@ -193,7 +193,7 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 - Recuperação de senha por código de verificação enviado por e-mail
 - Controle de permissões por perfil (Aluno, Bibliotecário, Admin)
 - Rastreamento de sessões ativas com heartbeat e logs de acesso
-- CRUD completo de Livros (com importação em massa via CSV)
+- CRUD completo de Livros (com Integração API Google Books Search para autocompletar dados)
 - CRUD completo de Usuários
 - CRUD de Autores e Categorias
 - Gestão unificada de Empréstimos e Reservas (tabela `emprestimo`)
@@ -201,7 +201,8 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 - Recomendações personalizadas por algoritmo 100% SQL (função `recomendar_livros`)
 - Notificações em tempo real (reserva confirmada, prazo vencendo, boas-vindas etc.)
 - Controle de domínios de e-mail institucionais permitidos para login Google
-- Metadados de livros gerados por IA (OpenAI / Gemini) com sistema de moods
+- Modais modernos com Backdrop Blur em todos os CRUDs
+- Painel Administrativo unificado com Sidebar expansível inteligente
 - **CRUD de Avaliações de Livros** *(em desenvolvimento)*
 
 ---

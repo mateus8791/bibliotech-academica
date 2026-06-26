@@ -31,11 +31,29 @@ const getRecomendacoes = async (req, res) => {
       return res.status(200).json(response);
     }
 
-    // Chamar function SQL de recomendação
-    const { rows: livros } = await pool.query(
-      'SELECT * FROM recomendar_livros($1, $2)',
-      [alunoId, 10]
-    );
+    // Query direta em vez da função recomendar_livros que não existe no DB do usuário
+    const recomendacaoQuery = `
+      SELECT DISTINCT ON (l.id)
+        l.id, l.titulo, l.capa_url,
+        (SELECT a.nome FROM autor a JOIN livro_autor la ON la.autor_id = a.id WHERE la.livro_id = l.id LIMIT 1) AS autor_nome,
+        (SELECT c.nome FROM categoria c JOIN livro_categoria lc ON lc.categoria_id = c.id WHERE lc.livro_id = l.id LIMIT 1) AS categoria_nome,
+        (l.quantidade_disponivel > 0) AS disponivel,
+        100 AS score,
+        'Recomendado com base nas suas preferências'::VARCHAR AS motivo
+      FROM livro l
+      JOIN livro_categoria lc ON l.id = lc.livro_id
+      JOIN livro_autor la ON l.id = la.livro_id
+      WHERE (
+        lc.categoria_id IN (SELECT categoria_id FROM preferencias_aluno WHERE aluno_id = $1 AND categoria_id IS NOT NULL)
+        OR la.autor_id IN (SELECT autor_id FROM preferencias_aluno WHERE aluno_id = $1 AND autor_id IS NOT NULL)
+      )
+      AND l.id NOT IN (
+        SELECT livro_id FROM emprestimo WHERE usuario_id = $1 AND tipo = 'emprestimo'
+      )
+      LIMIT $2
+    `;
+
+    const { rows: livros } = await pool.query(recomendacaoQuery, [alunoId, 10]);
 
     // Se menos de 5 resultados, complementar com mais populares não já incluídos
     if (livros.length < 5) {

@@ -19,39 +19,90 @@ import {
   Bell,
   Sun,
   Moon,
+  Star,
+  Puzzle,
+  Library,
+  ChevronDown
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 
-const NavLink = ({ href, icon: Icon, label, isCollapsed }: {
+export interface SidebarSubItem {
+  label: string;
   href: string;
+}
+
+const NavLink = ({ href, icon: Icon, label, isCollapsed, subItems }: {
+  href?: string;
   icon: React.ElementType;
   label: string;
   isCollapsed?: boolean;
+  subItems?: SidebarSubItem[];
 }) => {
   const pathname = usePathname();
-  const isActive = pathname === href || pathname.startsWith(`${href}/`);
+  const [isOpen, setIsOpen] = useState(false);
+  
+  const isActive = href 
+    ? (pathname === href || pathname.startsWith(`${href}/`)) 
+    : subItems?.some(sub => pathname === sub.href || pathname.startsWith(`${sub.href}/`));
 
-  return (
-    <Link href={href}>
-      <div
-        className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-all duration-200 group relative ${
-          isActive
-            ? 'bg-blue-600 text-white shadow-md'
-            : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
-        }`}
-      >
-        <Icon className="w-5 h-5 flex-shrink-0" />
-        {!isCollapsed && <span className="font-medium flex-1">{label}</span>}
-        {isCollapsed && (
-          <div className="absolute left-full ml-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-xl">
-            {label}
-            <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900"></div>
+  const content = (
+    <div
+      onClick={(e) => {
+        if (subItems) {
+           e.preventDefault();
+           setIsOpen(!isOpen);
+        }
+      }}
+      className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-all duration-200 group relative ${
+        isActive && !subItems
+          ? 'bg-blue-600 text-white shadow-md'
+          : isActive && subItems
+          ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+          : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
+      }`}
+    >
+      <Icon className="w-5 h-5 flex-shrink-0" />
+      {!isCollapsed && <span className="font-medium flex-1">{label}</span>}
+      
+      {!isCollapsed && subItems && (
+        <span className="text-gray-400">
+          {isOpen ? <ChevronDown className="w-4 h-4 rotate-180 transition-transform" /> : <ChevronDown className="w-4 h-4 transition-transform" />}
+        </span>
+      )}
+
+      {isCollapsed && (
+        <div className="absolute left-full ml-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-xl">
+          {label}
+          <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900"></div>
+        </div>
+      )}
+    </div>
+  );
+
+  if (subItems) {
+    return (
+      <div className="flex flex-col gap-1">
+        {content}
+        {isOpen && !isCollapsed && (
+          <div className="pl-11 pr-4 space-y-1 mt-1 animate-in slide-in-from-top-2 duration-200 fade-in">
+            {subItems.map((sub, idx) => {
+              const isSubActive = pathname === sub.href || pathname.startsWith(`${sub.href}/`);
+              return (
+                <Link key={idx} href={sub.href}>
+                  <div className={`py-2 px-3 rounded-lg text-sm transition-colors ${isSubActive ? 'text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-900/30' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+                    {sub.label}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>
-    </Link>
-  );
+    );
+  }
+
+  return href ? <Link href={href}>{content}</Link> : <button className="w-full text-left">{content}</button>;
 };
 
 /**
@@ -70,13 +121,23 @@ export const Sidebar = () => {
   const navLinks = useMemo(() => {
     const shared = [
       { href: '/dashboard/relatorios', icon: BarChart3, label: 'Relatórios' },
-      { href: '/dashboard/livros', icon: BookOpen, label: 'Gerenciar Livros' },
+      { 
+        icon: Library, 
+        label: 'Gerenciar Biblioteca',
+        subItems: [
+          { label: 'Livros', href: '/dashboard/livros' },
+          { label: 'Categorias', href: '/dashboard/categorias' },
+          { label: 'Autores', href: '/dashboard/autores' }
+        ]
+      },
       { href: '/dashboard/emprestimos', icon: BookMarked, label: 'Gerenciar Empréstimos' },
       { href: '/dashboard/usuarios', icon: Users, label: 'Gerenciar Usuários' },
     ];
     const adminOnly = [
       { href: '/dashboard/logs-acesso', icon: ClipboardList, label: 'Logs de Acesso' },
       { href: '/dashboard/dominios', icon: Globe, label: 'Domínios' },
+      { href: '/dashboard/avaliacoes', icon: Star, label: 'Avaliações' },
+      { href: '/dashboard/integracoes', icon: Puzzle, label: 'Integrações' },
     ];
     const profile = [{ href: '/perfil', icon: User, label: 'Meu Perfil' }];
 
@@ -176,7 +237,7 @@ export const Sidebar = () => {
           </p>
         )}
         {navLinks.map((link) => (
-          <NavLink key={link.href} {...link} isCollapsed={isCollapsed} />
+          <NavLink key={link.label} {...link} isCollapsed={isCollapsed} />
         ))}
       </nav>
 

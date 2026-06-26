@@ -2,7 +2,7 @@
 const express = require('express');
 const authMiddleware = require('../middlewares/authMiddleware');
 // Importar a nova função searchCategories e a createCategory
-const { getAllCategories, searchCategories, createCategory } = require('../controllers/categoryController');
+const { getAllCategories, searchCategories, createCategory, updateCategory, deleteCategory } = require('../controllers/categoryController');
 
 const router = express.Router();
 
@@ -20,5 +20,7 @@ router.get('/categorias', authMiddleware, getAllCategories);
 // Assumindo que apenas admins podem criar, você pode adicionar um roleMiddleware aqui
 router.post('/categorias', authMiddleware, /* roleMiddleware(['admin']), */ createCategory);
 
+router.put('/categorias/:id', authMiddleware, updateCategory);
+router.delete('/categorias/:id', authMiddleware, deleteCategory);
 
 module.exports = router;

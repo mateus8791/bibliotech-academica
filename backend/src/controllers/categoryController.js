@@ -87,8 +87,64 @@ const searchCategories = async (req, res) => {
     }
 };
 
+const updateCategory = async (req, res) => {
+    const { id } = req.params;
+    const { name, descricao } = req.body;
+
+    if (!name) {
+        return res.status(400).json({ mensagem: 'O nome da categoria é obrigatório.' });
+    }
+
+    try {
+        const updateSql = 'UPDATE categoria SET nome = $1, descricao = $2 WHERE id = $3 RETURNING id, nome, descricao';
+        const updatedCategory = await pool.query(updateSql, [name, descricao, id]);
+
+        if (updatedCategory.rows.length === 0) {
+            return res.status(404).json({ mensagem: 'Categoria não encontrada.' });
+        }
+
+        const category = {
+            category_id: updatedCategory.rows[0].id,
+            name: updatedCategory.rows[0].nome,
+            descricao: updatedCategory.rows[0].descricao
+        };
+        res.json(category);
+    } catch (error) {
+        console.error('Erro ao atualizar categoria:', error);
+        res.status(500).json({ mensagem: 'Erro interno do servidor ao atualizar categoria.' });
+    }
+};
+
+const deleteCategory = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        // Verifica se existem livros associados a essa categoria
+        const checkSql = 'SELECT livro_id FROM livro_categoria WHERE categoria_id = $1 LIMIT 1';
+        const links = await pool.query(checkSql, [id]);
+
+        if (links.rows.length > 0) {
+            return res.status(400).json({ mensagem: 'Não é possível excluir esta categoria pois existem livros associados a ela.' });
+        }
+
+        const deleteSql = 'DELETE FROM categoria WHERE id = $1 RETURNING id';
+        const deleted = await pool.query(deleteSql, [id]);
+
+        if (deleted.rows.length === 0) {
+            return res.status(404).json({ mensagem: 'Categoria não encontrada.' });
+        }
+
+        res.json({ mensagem: 'Categoria excluída com sucesso.' });
+    } catch (error) {
+        console.error('Erro ao excluir categoria:', error);
+        res.status(500).json({ mensagem: 'Erro interno do servidor ao excluir categoria.' });
+    }
+};
+
 module.exports = {
     getAllCategories,
     createCategory,
-    searchCategories
+    searchCategories,
+    updateCategory,
+    deleteCategory
 };

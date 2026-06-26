@@ -105,6 +105,17 @@ const criarAvaliacao = async (req, res) => {
   }
 
   try {
+    // Verificar se usuário está bloqueado de avaliar
+    const userResult = await pool.query('SELECT bloqueado_avaliar_ate FROM usuario WHERE id = $1', [usuarioId]);
+    if (userResult.rowCount > 0 && userResult.rows[0].bloqueado_avaliar_ate) {
+      const blockedUntil = new Date(userResult.rows[0].bloqueado_avaliar_ate);
+      if (blockedUntil > new Date()) {
+        return res.status(403).json({ 
+          mensagem: `Você está temporariamente bloqueado de enviar novas avaliações até ${blockedUntil.toLocaleDateString('pt-BR')}.` 
+        });
+      }
+    }
+
     // Verificar se o livro existe
     const livroResult = await pool.query('SELECT id FROM livro WHERE id = $1', [livro_id]);
     if (livroResult.rowCount === 0) {
@@ -206,7 +217,7 @@ const arquivarAvaliacao = async (req, res) => {
 
   try {
     const { rows, rowCount } = await pool.query(
-      'SELECT id, status FROM avaliacoes WHERE id = $1',
+      'SELECT id, status, usuario_id FROM avaliacoes WHERE id = $1',
       [id]
     );
 
@@ -214,12 +225,38 @@ const arquivarAvaliacao = async (req, res) => {
       return res.status(404).json({ mensagem: 'Avaliação não encontrada.' });
     }
 
-    const novoStatus = rows[0].status === 'ativa' ? 'arquivada' : 'ativa';
+    const avaliacao = rows[0];
+    const novoStatus = avaliacao.status === 'ativa' ? 'arquivada' : 'ativa';
 
     const { rows: updated } = await pool.query(
       `UPDATE avaliacoes SET status = $1 WHERE id = $2 RETURNING *`,
       [novoStatus, id]
     );
+
+    // Se a avaliação foi arquivada, verificar a regra de "3 strikes"
+    if (novoStatus === 'arquivada') {
+      const { rows: strikes } = await pool.query(
+        "SELECT COUNT(*) as count FROM avaliacoes WHERE usuario_id = $1 AND status = 'arquivada'",
+        [avaliacao.usuario_id]
+      );
+      
+      const qtdArquivadas = parseInt(strikes[0].count, 10);
+      
+      if (qtdArquivadas >= 3) {
+        // Bloquear o usuário por 7 dias
+        await pool.query(
+          "UPDATE usuario SET bloqueado_avaliar_ate = NOW() + INTERVAL '7 days' WHERE id = $1",
+          [avaliacao.usuario_id]
+        );
+        
+        // Registrar notificação de bloqueio (opcional)
+        await pool.query(
+          `INSERT INTO notificacao (usuario_id, tipo, titulo, mensagem, lida, data_criacao) 
+           VALUES ($1, 'sistema', 'Suspensão de Avaliações', 'Devido a múltiplas avaliações ocultadas pela moderação, você está suspenso de comentar por 7 dias.', false, NOW())`,
+          [avaliacao.usuario_id]
+        );
+      }
+    }
 
     res.json({
       mensagem: `Avaliação ${novoStatus === 'arquivada' ? 'arquivada' : 'reativada'} com sucesso.`,
@@ -228,6 +265,41 @@ const arquivarAvaliacao = async (req, res) => {
   } catch (error) {
     console.error('[avaliacoes] Erro ao arquivar:', error.message);
     res.status(500).json({ mensagem: 'Erro ao arquivar avaliação.' });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/avaliacoes/:id/notificar
+// Admin envia uma notificação direta para o autor da avaliação
+// ─────────────────────────────────────────────────────────────────────────────
+const notificarAutor = async (req, res) => {
+  const { id } = req.params;
+  const { mensagem } = req.body;
+
+  if (!mensagem) {
+    return res.status(400).json({ mensagem: 'A mensagem da notificação é obrigatória.' });
+  }
+
+  try {
+    const { rows, rowCount } = await pool.query(
+      'SELECT usuario_id FROM avaliacoes WHERE id = $1',
+      [id]
+    );
+
+    if (rowCount === 0) {
+      return res.status(404).json({ mensagem: 'Avaliação não encontrada.' });
+    }
+
+    await pool.query(
+      `INSERT INTO notificacao (usuario_id, tipo, titulo, mensagem, lida, data_criacao) 
+       VALUES ($1, 'moderacao', 'Aviso sobre sua avaliação', $2, false, NOW())`,
+      [rows[0].usuario_id, mensagem]
+    );
+
+    res.json({ mensagem: 'Notificação enviada com sucesso.' });
+  } catch (error) {
+    console.error('[avaliacoes] Erro ao notificar:', error.message);
+    res.status(500).json({ mensagem: 'Erro ao enviar notificação.' });
   }
 };
 
@@ -273,4 +345,5 @@ module.exports = {
   editarAvaliacao,
   arquivarAvaliacao,
   deletarAvaliacao,
+  notificarAutor,
 };

@@ -65,8 +65,10 @@ export function useCreateUser() {
 export function useUpdateUser() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string | number; data: Partial<User> }) => {
-      const res = await api.put<User>(`/usuarios/${id}`, data);
+    mutationFn: async ({ id, data }: { id: string | number; data: Partial<User> | FormData }) => {
+      // Se data for FormData, o axios configura os headers de multipart/form-data automaticamente
+      const headers = data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {};
+      const res = await api.put<User>(`/usuarios/${id}`, data, { headers });
       return res.data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: [USERS_KEY] }),

@@ -46,6 +46,43 @@ const getMyBooks = async (req, res) => {
   }
 };
 
+// Nova função para buscar o histórico de livros lidos (devolvidos/concluídos)
+const getHistorico = async (req, res) => {
+  const usuarioId = req.usuario.id;
+
+  try {
+    const query = `
+      SELECT
+        e.id,
+        e.tipo,
+        l.id as livro_id,
+        l.titulo,
+        l.capa_url,
+        a.nome as autor_nome,
+        e.data_emprestimo,
+        e.data_devolucao,
+        e.status
+      FROM emprestimo e
+      JOIN livro l ON e.livro_id = l.id
+      LEFT JOIN livro_autor la ON l.id = la.livro_id
+      LEFT JOIN autor a ON la.autor_id = a.id
+      WHERE e.usuario_id = $1
+        AND e.status IN ('devolvido', 'concluido')
+      GROUP BY e.id, l.id, a.nome
+      ORDER BY COALESCE(e.data_devolucao, e.updated_at) DESC;
+    `;
+
+    const result = await pool.query(query, [usuarioId]);
+
+    res.status(200).json(result.rows);
+
+  } catch (error) {
+    console.error("Erro ao buscar 'Histórico':", error);
+    res.status(500).json({ mensagem: 'Erro interno do servidor ao buscar histórico.' });
+  }
+};
+
 module.exports = {
   getMyBooks,
+  getHistorico,
 };

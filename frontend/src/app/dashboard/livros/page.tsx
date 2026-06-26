@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { PlusCircle, BookOpen, Trash2, Pencil } from 'lucide-react';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
+import EditarLivroModal from '@/components/EditarLivroModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { ImportLivrosModal } from '@/components/ImportLivrosModal';
 import { useBooks, useDeleteBook, type Book } from '@/lib/hooks/useBooks';
@@ -12,9 +13,12 @@ import { useBooks, useDeleteBook, type Book } from '@/lib/hooks/useBooks';
 export default function AdminLivrosPage() {
   const [livroParaDeletar, setLivroParaDeletar] = useState<Book | null>(null);
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
+  
+  const [livroParaEditarId, setLivroParaEditarId] = useState<string | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const { usuario } = useAuth();
-  const { data: livros = [], isLoading, isError } = useBooks();
+  const { data: livros = [], isLoading, isError, refetch } = useBooks();
   const deleteMutation = useDeleteBook();
 
   const handleDelete = () => {
@@ -30,6 +34,17 @@ export default function AdminLivrosPage() {
   const openDeleteModal = (livro: Book) => {
     setLivroParaDeletar(livro);
     setDeleteModalOpen(true);
+  };
+
+  const openEditModal = (livroId: string) => {
+    setLivroParaEditarId(livroId);
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSuccess = () => {
+    setIsEditModalOpen(false);
+    setLivroParaEditarId(null);
+    refetch();
   };
 
   return (
@@ -103,11 +118,9 @@ export default function AdminLivrosPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-bold text-gray-700">{livro.quantidade_disponivel}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{livro.data_cadastro ?? '—'}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                          <Link href={`/dashboard/livros/editar/${livro.id}`} passHref>
-                            <button className="p-2 text-gray-400 hover:text-blue-600" aria-label="Editar">
-                              <Pencil className="w-5 h-5" />
-                            </button>
-                          </Link>
+                          <button onClick={() => openEditModal(livro.id)} className="p-2 text-gray-400 hover:text-blue-600" aria-label="Editar">
+                            <Pencil className="w-5 h-5" />
+                          </button>
                           <button onClick={() => openDeleteModal(livro)} className="p-2 text-gray-400 hover:text-red-600" aria-label="Deletar">
                             <Trash2 className="w-5 h-5" />
                           </button>
@@ -124,11 +137,19 @@ export default function AdminLivrosPage() {
             </div>
           )}
         </div>
+
       <ConfirmDeleteModal
         isOpen={isDeleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={handleDelete}
         itemName={livroParaDeletar?.titulo ?? ''}
+      />
+
+      <EditarLivroModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        bookId={livroParaEditarId}
+        onSuccess={handleEditSuccess}
       />
     </>
   );

@@ -15,10 +15,12 @@ import {
   Users,
   LayoutList,
   LayoutGrid,
-  History as HistoryIcon
+  History as HistoryIcon,
+  Star
 } from 'lucide-react';
 import Image from 'next/image';
 import CancelModal from '@/components/CancelModal';
+import { AvaliarModal } from '@/components/dashboard/AvaliarModal';
 
 // Interface baseada na tabela 'reserva' do banco de dados
 interface Reserva {
@@ -52,6 +54,10 @@ export default function MinhasReservasPage() {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [reservaToCancel, setReservaToCancel] = useState<Reserva | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Estados para o modal de avaliação
+  const [isAvaliarModalOpen, setIsAvaliarModalOpen] = useState(false);
+  const [reservaToAvaliar, setReservaToAvaliar] = useState<Reserva | null>(null);
 
   // Busca as reservas da API
   useEffect(() => {
@@ -134,7 +140,16 @@ export default function MinhasReservasPage() {
             </div>
             <div className="flex-1 min-w-0">
               <h4 className="font-semibold text-gray-800 text-sm truncate">{reserva.livro.titulo}</h4>
-              <p className="text-xs text-gray-500 truncate">{reserva.livro.autores}</p>
+              <p className="text-xs text-gray-500 truncate mb-1">{reserva.livro.autores}</p>
+              <button
+                onClick={() => {
+                  setReservaToAvaliar(reserva);
+                  setIsAvaliarModalOpen(true);
+                }}
+                className="flex items-center gap-1.5 text-xs text-yellow-950 font-bold bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 px-3 py-1.5 rounded-md transition-all shadow-sm shadow-yellow-500/30 w-max mt-1"
+              >
+                <Star size={14} className="fill-yellow-950/20" /> Avaliar
+              </button>
             </div>
           </div>
 
@@ -205,7 +220,16 @@ export default function MinhasReservasPage() {
         </div>
         <div className="flex-1 min-w-0">
           <h4 className="font-semibold text-gray-800 text-sm line-clamp-2 mb-1">{reserva.livro.titulo}</h4>
-          <p className="text-xs text-gray-500 line-clamp-1">{reserva.livro.autores}</p>
+          <p className="text-xs text-gray-500 line-clamp-1 mb-2">{reserva.livro.autores}</p>
+          <button
+            onClick={() => {
+              setReservaToAvaliar(reserva);
+              setIsAvaliarModalOpen(true);
+            }}
+            className="flex items-center gap-1.5 text-xs text-yellow-950 font-bold bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 px-3 py-1.5 rounded-md transition-all shadow-sm shadow-yellow-500/30 w-max mt-1"
+          >
+            <Star size={14} className="fill-yellow-950/20" /> Avaliar
+          </button>
         </div>
       </div>
 
@@ -267,7 +291,16 @@ export default function MinhasReservasPage() {
             </div>
             <div className="flex-1 min-w-0">
               <h4 className="font-semibold text-gray-800 text-sm truncate">{reserva.livro.titulo}</h4>
-              <p className="text-xs text-gray-500 truncate">{reserva.livro.autores}</p>
+              <p className="text-xs text-gray-500 truncate mb-1">{reserva.livro.autores}</p>
+              <button
+                onClick={() => {
+                  setReservaToAvaliar(reserva);
+                  setIsAvaliarModalOpen(true);
+                }}
+                className="flex items-center gap-1.5 text-xs text-yellow-950 font-bold bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 px-3 py-1.5 rounded-md transition-all shadow-sm shadow-yellow-500/30 w-max mt-1"
+              >
+                <Star size={14} className="fill-yellow-950/20" /> Avaliar
+              </button>
             </div>
           </div>
           <div className="col-span-3 text-sm text-gray-600">
@@ -534,6 +567,23 @@ export default function MinhasReservasPage() {
           title={reservaToCancel.livro.titulo}
           coverUrl={reservaToCancel.livro.capa_url}
           isSubmitting={isSubmitting}
+        />
+      )}
+
+      {/* Modal de Avaliação */}
+      {reservaToAvaliar && (
+        <AvaliarModal
+          isOpen={isAvaliarModalOpen}
+          onClose={() => {
+            setIsAvaliarModalOpen(false);
+            setReservaToAvaliar(null);
+          }}
+          livroId={reservaToAvaliar.livro_id}
+          livroTitulo={reservaToAvaliar.livro.titulo}
+          coverUrl={reservaToAvaliar.livro.capa_url}
+          onSuccess={() => {
+            alert('Avaliação enviada com sucesso!');
+          }}
         />
       )}
     </>

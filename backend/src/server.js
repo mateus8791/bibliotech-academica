@@ -33,13 +33,16 @@ const notificacoesRoutes = require('./routes/notificacoesRoutes'); // Notificaç
 const preferenciasRoutes = require('./routes/preferenciasRoutes'); // Preferências do aluno
 const recomendacoesRoutes = require('./routes/recomendacoesRoutes'); // Recomendações de livros
 const avaliacoesRoutes = require('./routes/avaliacoesRoutes'); // Avaliações de livros
+const rankingRoutes = require('./routes/rankingRoutes'); // Ranking de leitores (gamificação)
+const integrationRoutes = require('./routes/integrationRoutes'); // Integrações
 
 const path = require('path');
 
 const app = express();
 
-// Servir arquivos estáticos de capas de livros
+// Servir arquivos estáticos de capas de livros e uploads (avatares)
 app.use('/covers', express.static(path.join(__dirname, '..', 'covers')));
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 app.use(cors());
 
@@ -101,6 +104,8 @@ app.use('/api', notificacoesRoutes); // Notificações
 app.use('/api/preferencias', preferenciasRoutes); // Preferências do aluno
 app.use('/api/recomendacoes', recomendacoesRoutes); // Recomendações de livros
 app.use('/api', avaliacoesRoutes); // Avaliações de livros
+app.use('/api', rankingRoutes); // Ranking de leitores (gamificação)
+app.use('/api', integrationRoutes); // Integrações (Admin)
 
 // Rota principal de teste
 app.get('/', (req, res) => {

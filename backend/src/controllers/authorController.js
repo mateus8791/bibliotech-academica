@@ -123,8 +123,80 @@ const searchAuthors = async (req, res) => {
 };
 
 
+const updateAuthor = async (req, res) => {
+    const { id } = req.params;
+    const { name, biografia, data_nascimento, nacionalidade, foto_url } = req.body;
+
+    if (!name) {
+        return res.status(400).json({ mensagem: 'O nome do autor é obrigatório.' });
+    }
+
+    try {
+        const updateSql = `
+            UPDATE autor 
+            SET nome = $1, biografia = $2, data_nascimento = $3, nacionalidade = $4, foto_url = $5 
+            WHERE id = $6 RETURNING id, nome, biografia, nacionalidade, data_nascimento, foto_url
+        `;
+        const values = [
+            name, 
+            biografia, 
+            data_nascimento && !isNaN(Date.parse(data_nascimento)) ? data_nascimento : null, 
+            nacionalidade, 
+            foto_url, 
+            id
+        ];
+
+        const updatedAuthor = await pool.query(updateSql, values);
+
+        if (updatedAuthor.rows.length === 0) {
+            return res.status(404).json({ mensagem: 'Autor não encontrado.' });
+        }
+
+        const author = {
+            author_id: updatedAuthor.rows[0].id,
+            name: updatedAuthor.rows[0].nome,
+            biografia: updatedAuthor.rows[0].biografia,
+            nacionalidade: updatedAuthor.rows[0].nacionalidade,
+            data_nascimento: updatedAuthor.rows[0].data_nascimento,
+            foto_url: updatedAuthor.rows[0].foto_url
+        };
+        res.json(author);
+    } catch (error) {
+        console.error('Erro ao atualizar autor:', error);
+        res.status(500).json({ mensagem: 'Erro interno do servidor ao atualizar autor.' });
+    }
+};
+
+const deleteAuthor = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        // Verifica se existem livros associados a esse autor
+        const checkSql = 'SELECT livro_id FROM livro_autor WHERE autor_id = $1 LIMIT 1';
+        const links = await pool.query(checkSql, [id]);
+
+        if (links.rows.length > 0) {
+            return res.status(400).json({ mensagem: 'Não é possível excluir este autor pois existem livros associados a ele.' });
+        }
+
+        const deleteSql = 'DELETE FROM autor WHERE id = $1 RETURNING id';
+        const deleted = await pool.query(deleteSql, [id]);
+
+        if (deleted.rows.length === 0) {
+            return res.status(404).json({ mensagem: 'Autor não encontrado.' });
+        }
+
+        res.json({ mensagem: 'Autor excluído com sucesso.' });
+    } catch (error) {
+        console.error('Erro ao excluir autor:', error);
+        res.status(500).json({ mensagem: 'Erro interno do servidor ao excluir autor.' });
+    }
+};
+
 module.exports = {
     getAllAuthors,
     createAuthor,
-    searchAuthors
+    searchAuthors,
+    updateAuthor,
+    deleteAuthor
 };

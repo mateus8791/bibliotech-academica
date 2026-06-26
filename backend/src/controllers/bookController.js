@@ -108,6 +108,8 @@ const getAllBooks = async (req, res) => {
           l.sinopse,
           l.num_paginas,
           TO_CHAR(l.data_cadastro, 'DD/MM/YYYY') AS data_cadastro,
+          (SELECT ROUND(AVG(av.nota)::numeric, 1) FROM avaliacoes av WHERE av.livro_id = l.id) AS nota_media,
+          (SELECT COUNT(*) FROM avaliacoes av WHERE av.livro_id = l.id) AS total_avaliacoes,
           COALESCE(
             json_agg(
               DISTINCT jsonb_build_object('id', a.id, 'nome', a.nome, 'foto_url', a.foto_url)
@@ -180,6 +182,8 @@ const getAllBooks = async (req, res) => {
         l.sinopse,
         l.num_paginas,
         TO_CHAR(l.data_cadastro, 'DD/MM/YYYY') AS data_cadastro,
+        (SELECT ROUND(AVG(av.nota)::numeric, 1) FROM avaliacoes av WHERE av.livro_id = l.id) AS nota_media,
+        (SELECT COUNT(*) FROM avaliacoes av WHERE av.livro_id = l.id) AS total_avaliacoes,
         COALESCE(
           json_agg(
             DISTINCT jsonb_build_object('id', a.id, 'nome', a.nome, 'foto_url', a.foto_url)
@@ -467,18 +471,19 @@ const updateBook = async (req, res) => {
     await client.query('BEGIN');
 
     // Verificar se o livro existe antes de atualizar
-    const checkBook = await client.query('SELECT titulo FROM livro WHERE id = $1', [id]);
+    const checkBook = await client.query('SELECT titulo, quantidade_disponivel FROM livro WHERE id = $1', [id]);
     if (checkBook.rowCount === 0) {
          await client.query('ROLLBACK'); // Não precisa fazer commit/rollback se não encontrou
          client.release();
          return res.status(404).json({ mensagem: 'Livro não encontrado para atualização.' });
     }
     const tituloOriginal = checkBook.rows[0].titulo;
-
+    const qtdExistente = checkBook.rows[0].quantidade_disponivel;
+    const novaQtd = quantidade_disponivel !== undefined ? quantidade_disponivel : qtdExistente;
 
     await client.query(
       `UPDATE livro SET titulo = $1, isbn = $2, ano_publicacao = $3, num_paginas = $4, sinopse = $5, capa_url = $6, quantidade_disponivel = $7 WHERE id = $8`,
-      [titulo, isbn, ano_publicacao || null, num_paginas || null, sinopse, capa_url, quantidade_disponivel || 0, id]
+      [titulo, isbn, ano_publicacao || null, num_paginas || null, sinopse, capa_url, novaQtd, id]
     );
 
     // Atualizar associações de autores

@@ -5,17 +5,28 @@ import { useState, MouseEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Book as BookIcon, Pencil, Trash2 } from 'lucide-react';
+import { Book as BookIcon, Pencil, Trash2, Star } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import api from '@/services/api';
-import ConfirmDeleteModal from './ConfirmDeleteModal'; 
+import { getCategoryMood } from '@/lib/categoryMood';
+import ConfirmDeleteModal from './ConfirmDeleteModal';
 
 // --- DEFINIÇÃO DOS TIPOS (INTERFACES) ---
+interface CategoriaRef {
+  id?: string | number;
+  nome: string;
+}
+
 interface Livro {
   id: string;
   titulo: string;
   capa_url: string | null;
   autores: string | null;
+  // Campos opcionais de enriquecimento (vindos de /livros)
+  nota_media?: number | string | null;
+  total_avaliacoes?: number | string | null;
+  quantidade_disponivel?: number | null;
+  categorias?: CategoriaRef[] | string | null;
 }
 
 interface BookCardProps {
@@ -30,6 +41,24 @@ const BookCard = ({ livro, onDelete }: BookCardProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [imgError, setImgError] = useState(false);
+
+  // --- Dados de enriquecimento (tratados de forma segura) ---
+  const notaNum =
+    livro.nota_media !== undefined && livro.nota_media !== null
+      ? Number(livro.nota_media)
+      : null;
+  const totalAval =
+    livro.total_avaliacoes !== undefined && livro.total_avaliacoes !== null
+      ? Number(livro.total_avaliacoes)
+      : 0;
+  const temNota = notaNum !== null && !isNaN(notaNum) && totalAval > 0;
+  const disponivel = (livro.quantidade_disponivel ?? 0) > 0;
+  const primeiraCategoria = Array.isArray(livro.categorias)
+    ? livro.categorias[0]?.nome ?? null
+    : typeof livro.categorias === 'string'
+      ? livro.categorias.split(',')[0]?.trim() || null
+      : null;
+  const mood = primeiraCategoria ? getCategoryMood(primeiraCategoria) : null;
 
   const handleDeleteClick = (e: MouseEvent) => {
     e.preventDefault();
@@ -94,14 +123,54 @@ const BookCard = ({ livro, onDelete }: BookCardProps) => {
                     <Image src="/covers/placeholder-icon.png" alt="Capa não disponível" width={64} height={64} className="opacity-50" />
                   </div>
                 )}
+
+                {/* Badge de disponibilidade */}
+                <span
+                  className={`absolute top-2 left-2 z-[5] inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-sm backdrop-blur-sm ${
+                    disponivel
+                      ? 'bg-emerald-500/90 text-white'
+                      : 'bg-gray-700/80 text-gray-100'
+                  }`}
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full ${disponivel ? 'bg-white' : 'bg-gray-300'}`} />
+                  {disponivel ? 'Disponível' : 'Esgotado'}
+                </span>
               </div>
               <div className="p-3 flex flex-col flex-grow">
-                <h3 className="font-bold text-sm text-gray-800 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                {/* Chip de categoria (cor por "mood") */}
+                {mood && primeiraCategoria && (
+                  <span className={`mb-1.5 inline-flex w-max items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${mood.chip}`}>
+                    <span>{mood.emoji}</span>
+                    <span className="truncate max-w-[120px]">{primeiraCategoria}</span>
+                  </span>
+                )}
+
+                <h3 className="font-bold text-sm text-gray-800 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
                   {livro.titulo}
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
                   {livro.autores || 'Autor desconhecido'}
                 </p>
+
+                {/* Avaliação */}
+                <div className="mt-2 flex items-center gap-1">
+                  {temNota ? (
+                    <>
+                      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                      <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">
+                        {notaNum!.toFixed(1)}
+                      </span>
+                      <span className="text-[11px] text-gray-400">
+                        ({totalAval})
+                      </span>
+                    </>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[11px] text-gray-400">
+                      <Star className="h-3.5 w-3.5 text-gray-300 dark:text-gray-600" />
+                      Sem avaliações
+                    </span>
+                  )}
+                </div>
               </div>
           </Link>
         </div>

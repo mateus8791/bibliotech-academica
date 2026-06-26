@@ -1,6 +1,7 @@
 // Arquivo: backend/src/middlewares/authMiddleware.js
 
 const jwt = require('jsonwebtoken');
+const pool = require('../config/database');
 
 module.exports = (req, res, next) => {
   console.log('[authMiddleware] Iniciando verificação de token...');
@@ -36,6 +37,13 @@ module.exports = (req, res, next) => {
 
     // 4. Se o token for válido, anexa os dados decodificados (id, tipo) em req.usuario
     req.usuario = decoded;
+
+    // 5. Atualiza o último acesso do usuário (fire-and-forget, não bloqueia a request)
+    pool.query(
+      'UPDATE usuario SET ultimo_acesso = NOW() WHERE id = $1',
+      [decoded.id]
+    ).catch(err => console.error('[authMiddleware] Erro ao atualizar ultimo_acesso:', err.message));
+
     return next(); // Permite que a requisição continue para o próximo middleware (roleMiddleware)
   });
 };

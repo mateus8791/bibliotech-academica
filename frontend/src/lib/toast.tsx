@@ -19,16 +19,17 @@ const BASE_STYLE: React.CSSProperties = {
 };
 
 const WELCOME_STYLE: React.CSSProperties = {
-  minHeight: '96px',
-  padding: '18px 22px',
+  minHeight: '80px',
+  padding: '16px 20px',
   alignItems: 'center',
   gap: '16px',
   fontSize: '16px',
   fontWeight: 600,
-  borderRadius: '14px',
-  boxShadow: '0 12px 32px rgba(124,58,237,0.18)',
-  background: 'linear-gradient(135deg, #faf5ff 0%, #ede9fe 100%)',
-  borderLeft: '5px solid #7C3AED',
+  borderRadius: '12px',
+  boxShadow: '0 10px 30px rgba(37, 99, 235, 0.15)',
+  background: '#ffffff',
+  borderLeft: '5px solid #2563EB',
+  color: '#1e293b',
 };
 
 function OwlIcon({ src, alt, size = 52 }: { src: string; alt: string; size?: number }) {

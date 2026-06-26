@@ -81,6 +81,7 @@ const getStudentDashboard = async (req, res) => {
       categoriasResult,
       reservasAtivasResult,
       livrosPopularesResult,
+      usuariosOnlineResult,
     ] = await Promise.all([
       // KPIs - 4 cards no topo (usando tabela emprestimo com tipo = 'reserva')
       pool.query(`
@@ -161,6 +162,17 @@ const getStudentDashboard = async (req, res) => {
         ORDER BY total_reservas DESC, l.titulo
         LIMIT 5
       `),
+      
+      // QUERY 6: "Usuários Online" - Apenas quem acessou nos últimos 5 minutos
+      pool.query(`
+        SELECT id, nome, foto_url, ultimo_acesso
+        FROM usuario 
+        WHERE id != $1 
+          AND ultimo_acesso IS NOT NULL 
+          AND ultimo_acesso >= NOW() - INTERVAL '5 minutes'
+        ORDER BY ultimo_acesso DESC 
+        LIMIT 5
+      `, [usuarioId])
     ]);
 
     const dashboardData = {
@@ -169,6 +181,7 @@ const getStudentDashboard = async (req, res) => {
       categorias: categoriasResult.rows,
       reservasAtivas: reservasAtivasResult.rows,
       livrosPopulares: livrosPopularesResult.rows,
+      usuariosOnline: usuariosOnlineResult.rows,
     };
 
     res.status(200).json(dashboardData);

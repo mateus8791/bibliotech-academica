@@ -13,13 +13,23 @@ import {
   FileText,
   Globe,
   MessageCircle,
+  Library,
+  Tags,
+  PenTool
 } from 'lucide-react';
+
+export interface SidebarSubItem {
+  label: string;
+  href: string;
+  permission?: string;
+}
 
 export interface SidebarLink {
   label: string;
-  href: string;
+  href?: string;
   icon: any;
   permission?: string; // Permissão RBAC necessária (opcional)
+  subItems?: SidebarSubItem[]; // Suporte para submenu
 }
 
 export const sidebarConfigAluno: SidebarLink[] = [
@@ -58,42 +68,45 @@ export const sidebarConfigAluno: SidebarLink[] = [
 export const sidebarConfigBibliotecario: SidebarLink[] = [
   {
     label: 'Dashboard',
-    href: '/bibliotecario/dashboard',
+    href: '/dashboard',
     icon: LayoutDashboard,
   },
   {
+    label: 'Gerenciar Biblioteca',
+    icon: Library,
+    subItems: [
+      { label: 'Livros', href: '/dashboard/livros', permission: 'can_view_books' },
+      { label: 'Categorias', href: '/dashboard/categorias' },
+      { label: 'Autores', href: '/dashboard/autores' }
+    ]
+  },
+  {
     label: 'Empréstimos',
-    href: '/bibliotecario/emprestimos',
+    href: '/dashboard/emprestimos',
     icon: BookMarked,
     permission: 'can_view_loans',
   },
   {
     label: 'Reservas',
-    href: '/bibliotecario/reservas',
+    href: '/dashboard/reservas',
     icon: Calendar,
     permission: 'can_view_reservations',
   },
   {
-    label: 'Livros',
-    href: '/bibliotecario/livros',
-    icon: BookOpen,
-    permission: 'can_view_books',
-  },
-  {
     label: 'Usuários',
-    href: '/bibliotecario/usuarios',
+    href: '/dashboard/usuarios',
     icon: Users,
     permission: 'can_view_users',
   },
   {
     label: 'Relatórios',
-    href: '/bibliotecario/relatorios',
+    href: '/dashboard/relatorios',
     icon: BarChart3,
     permission: 'can_view_reports',
   },
   {
     label: 'Perfil',
-    href: '/bibliotecario/perfil',
+    href: '/perfil',
     icon: User,
   },
 ];
@@ -101,54 +114,62 @@ export const sidebarConfigBibliotecario: SidebarLink[] = [
 export const sidebarConfigAdmin: SidebarLink[] = [
   {
     label: 'Dashboard',
-    href: '/admin/dashboard',
+    href: '/dashboard',
     icon: LayoutDashboard,
   },
   {
+    label: 'Gerenciar Biblioteca',
+    icon: Library,
+    subItems: [
+      { label: 'Livros', href: '/dashboard/livros', permission: 'can_view_books' },
+      { label: 'Categorias', href: '/dashboard/categorias' },
+      { label: 'Autores', href: '/dashboard/autores' }
+    ]
+  },
+  {
     label: 'Usuários',
-    href: '/admin/usuarios',
+    href: '/dashboard/usuarios',
     icon: Users,
     permission: 'can_view_users',
   },
   {
-    label: 'Livros',
-    href: '/admin/livros',
-    icon: BookOpen,
-    permission: 'can_view_books',
-  },
-  {
     label: 'Empréstimos',
-    href: '/admin/emprestimos',
+    href: '/dashboard/emprestimos',
     icon: BookMarked,
     permission: 'can_view_loans',
   },
   {
     label: 'Relatórios',
-    href: '/admin/relatorios',
+    href: '/dashboard/relatorios',
     icon: BarChart3,
     permission: 'can_view_reports',
   },
   {
     label: 'Permissões',
-    href: '/admin/permissoes',
+    href: '/dashboard/permissoes',
     icon: Shield,
     permission: 'can_manage_roles',
   },
   {
     label: 'Logs de Acesso',
-    href: '/admin/logs-acesso',
+    href: '/dashboard/logs-acesso',
     icon: FileText,
     permission: 'can_view_logs',
   },
   {
     label: 'Domínios',
-    href: '/admin/dominios',
+    href: '/dashboard/dominios',
     icon: Globe,
     permission: 'can_manage_domains',
   },
   {
+    label: 'Integrações',
+    href: '/dashboard/integracoes',
+    icon: Settings,
+  },
+  {
     label: 'Configurações',
-    href: '/admin/configuracoes',
+    href: '/dashboard/configuracoes',
     icon: Settings,
   },
 ];
@@ -158,10 +179,21 @@ export const filterLinksByPermissions = (
   links: SidebarLink[],
   userPermissions: string[]
 ): SidebarLink[] => {
-  return links.filter((link) => {
-    // Se o link não tem permissão específica, sempre mostra
-    if (!link.permission) return true;
-    // Senão, verifica se o usuário tem a permissão
-    return userPermissions.includes(link.permission);
-  });
+  return links.map(link => {
+    // Se tiver submenu, filtra os submenus
+    if (link.subItems) {
+      const filteredSubItems = link.subItems.filter(sub => 
+        !sub.permission || userPermissions.includes(sub.permission)
+      );
+      // Se não sobrou nenhum submenu, retorna nulo para filtrar o grupo todo fora depois
+      if (filteredSubItems.length === 0) return null;
+      return { ...link, subItems: filteredSubItems };
+    }
+    
+    // Sem submenu: verifica permissão direta
+    if (!link.permission || userPermissions.includes(link.permission)) {
+      return link;
+    }
+    return null;
+  }).filter(Boolean) as SidebarLink[];
 };

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import api from '@/services/api';
 import { BookOpen, Clock, DollarSign, Award, Sparkles } from 'lucide-react';
@@ -60,6 +61,8 @@ export default function AlunoDashboardPage() {
   const { data: recomData } = useRecomendacoes();
   const [showOwlNotification, setShowOwlNotification] = useState(false);
 
+  const [historico, setHistorico] = useState<any[]>([]);
+
   // Mostrar notificação quando recomData carregou e não tem preferências
   useEffect(() => {
     if (recomData && !recomData.temPreferencias) {
@@ -83,18 +86,15 @@ export default function AlunoDashboardPage() {
           return;
         }
 
-        // DIAGNÓSTICO: Verificar token antes de buscar dashboard
-        try {
-          const diagnostico = await api.get('/diagnostico/token');
-          console.log('[Dashboard] Diagnóstico do token:', diagnostico.data);
-        } catch (diagError) {
-          console.error('[Dashboard] Erro no diagnóstico do token:', diagError);
-        }
-
         console.log('[Dashboard] Buscando dados do dashboard...');
-        const response = await api.get('/dashboard/aluno');
+        const [response, historicoRes] = await Promise.all([
+          api.get('/dashboard/aluno'),
+          api.get('/loans/historico').catch(() => ({ data: [] }))
+        ]);
+        
         console.log('[Dashboard] Dados recebidos com sucesso:', response.data);
         setData(response.data);
+        setHistorico(historicoRes.data);
         setError(null);
       } catch (error: any) {
         console.error('Erro ao carregar dados do dashboard:', error);
@@ -215,23 +215,32 @@ export default function AlunoDashboardPage() {
       {/* Seção "Para Você" — só exibe quando tem recomendações */}
       {recomData?.temPreferencias && recomData.livros.length > 0 && (
         <div className="mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Sparkles className="w-5 h-5 text-amber-500" />
-            <h2 className="text-lg font-bold text-gray-800 dark:text-white">Para Você</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-amber-500" />
+              <h2 className="text-lg font-bold text-gray-800 dark:text-white">Para Você</h2>
+            </div>
+            <Link 
+              href="/catalogo" 
+              className="text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+            >
+              Confira mais no catálogo ›
+            </Link>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {recomData.livros.map((livro: LivroRecomendado) => (
-              <div
+              <Link
+                href={`/livro/${livro.id}`}
                 key={livro.id}
-                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden hover:shadow-md transition-shadow"
+                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden hover:shadow-md transition-shadow group flex flex-col"
               >
                 <div className="aspect-[2/3] bg-gray-100 dark:bg-gray-700 relative">
                   {livro.capa_url ? (
                     <img
                       src={livro.capa_url}
                       alt={livro.titulo}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
                   ) : (
@@ -239,31 +248,87 @@ export default function AlunoDashboardPage() {
                       <BookOpen className="w-8 h-8 text-gray-400" />
                     </div>
                   )}
-                  <span className="absolute bottom-1 left-1 right-1 text-center text-[10px] font-medium bg-black/60 text-white rounded px-1 py-0.5 leading-tight">
+                  <span className="absolute bottom-1 left-1 right-1 text-center text-[10px] font-medium bg-black/70 backdrop-blur-sm text-white rounded px-1 py-0.5 leading-tight">
                     {livro.motivo}
                   </span>
                 </div>
-                <div className="p-2">
-                  <p className="text-xs font-semibold text-gray-900 dark:text-white line-clamp-2 mb-1">
-                    {livro.titulo}
-                  </p>
-                  {livro.autor_nome && (
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400 line-clamp-1">
-                      {livro.autor_nome}
+                <div className="p-3 flex flex-col flex-1 justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2 mb-1">
+                      {livro.titulo}
                     </p>
-                  )}
+                    {livro.autor_nome && (
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 line-clamp-1 mb-2">
+                        {livro.autor_nome}
+                      </p>
+                    )}
+                  </div>
                   <button
-                    onClick={() => router.push('/catalogo')}
-                    className={`mt-2 w-full py-1 text-[11px] font-medium rounded-md transition-colors ${
+                    className={`mt-auto w-full py-1.5 text-xs font-bold rounded-md transition-colors ${
                       livro.disponivel
-                        ? 'bg-green-700 hover:bg-green-800 text-white'
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
                         : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 hover:bg-amber-200'
                     }`}
                   >
-                    {livro.disponivel ? 'Emprestar' : 'Reservar'}
+                    Reservar
                   </button>
                 </div>
-              </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Nova Seção "Livros Já Lidos" */}
+      {historico && historico.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <BookOpen className="w-5 h-5 text-indigo-500" />
+            <h2 className="text-lg font-bold text-gray-800 dark:text-white">Livros Já Lidos</h2>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            {historico.slice(0, 5).map((livro: any) => (
+              <Link
+                href={`/livro/${livro.livro_id}`}
+                key={livro.id}
+                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden hover:shadow-md transition-shadow group flex flex-col opacity-90 hover:opacity-100"
+              >
+                <div className="aspect-[2/3] bg-gray-100 dark:bg-gray-700 relative grayscale-[0.2] group-hover:grayscale-0 transition-all">
+                  {livro.capa_url ? (
+                    <img
+                      src={livro.capa_url}
+                      alt={livro.titulo}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <BookOpen className="w-8 h-8 text-gray-400" />
+                    </div>
+                  )}
+                  <span className="absolute bottom-1 left-1 right-1 text-center text-[10px] font-medium bg-black/70 backdrop-blur-sm text-white rounded px-1 py-0.5 leading-tight">
+                    Devolvido em {new Date(livro.data_devolucao).toLocaleDateString('pt-BR')}
+                  </span>
+                </div>
+                <div className="p-3 flex flex-col flex-1 justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2 mb-1">
+                      {livro.titulo}
+                    </p>
+                    {livro.autor_nome && (
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 line-clamp-1 mb-2">
+                        {livro.autor_nome}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    className="mt-auto w-full py-1.5 text-xs font-bold rounded-md transition-colors bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-200"
+                  >
+                    Reservar de novo
+                  </button>
+                </div>
+              </Link>
             ))}
           </div>
         </div>

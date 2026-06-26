@@ -35,6 +35,14 @@ const login = async (req, res) => {
       return res.status(401).json({ mensagem: 'Email ou senha inválidos.' });
     }
 
+    if (usuario.must_change_password) {
+      return res.status(428).json({
+        requirePasswordChange: true,
+        usuario_id: usuario.id,
+        mensagem: 'Você precisa redefinir sua senha de acesso.'
+      });
+    }
+
     // Criar registro de access_log
     const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
     const accessLogQuery = `
@@ -249,9 +257,81 @@ const resetarSenha = async (req, res) => {
   }
 };
 
+// Função para redefinir senha no primeiro login
+const firstLoginChangePassword = async (req, res) => {
+  const { usuario_id, nova_senha } = req.body;
+
+  if (!usuario_id || !nova_senha) {
+    return res.status(400).json({ mensagem: 'ID do usuário e nova senha são obrigatórios.' });
+  }
+
+  try {
+    const saltRounds = 10;
+    const novaSenhaHash = await bcrypt.hash(nova_senha, saltRounds);
+
+    await pool.query(
+      'UPDATE usuario SET senha_hash = $1, must_change_password = FALSE WHERE id = $2',
+      [novaSenhaHash, usuario_id]
+    );
+
+    return res.status(200).json({
+      mensagem: 'Senha redefinida com sucesso. Faça login com sua nova senha.'
+    });
+  } catch (error) {
+    console.error('Erro no firstLoginChangePassword:', error);
+    return res.status(500).json({ mensagem: 'Erro interno do servidor.' });
+  }
+};
+
+// Função para solicitar redefinição de senha (envia notificação aos admins)
+const solicitarReset = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ mensagem: 'E-mail é obrigatório.' });
+  }
+
+  try {
+    const { rows: usuarios } = await pool.query('SELECT id, nome, email FROM usuario WHERE email = $1', [email]);
+    
+    if (usuarios.length === 0) {
+      // Retornar 200 mesmo se não encontrar, por segurança (evita enumeração de emails)
+      return res.status(200).json({ mensagem: 'Se o e-mail existir, os administradores serão notificados.' });
+    }
+
+    const usuario = usuarios[0];
+
+    // Buscar todos os admins
+    const { rows: admins } = await pool.query("SELECT id FROM usuario WHERE tipo_usuario = 'admin'");
+
+    // Criar notificação para cada admin
+    for (const admin of admins) {
+      await pool.query(
+        `INSERT INTO notificacoes (usuario_id, tipo, lida, data_criacao, mensagem, payload)
+         VALUES ($1, 'PASSWORD_RESET_REQUEST', false, CURRENT_TIMESTAMP, $2, $3)`,
+        [
+          admin.id,
+          `O usuário ${usuario.nome} solicitou redefinição de senha.`,
+          JSON.stringify({ usuario_id: usuario.id, email: usuario.email, nome: usuario.nome })
+        ]
+      );
+    }
+
+    return res.status(200).json({
+      mensagem: 'Sua solicitação foi enviada aos administradores com sucesso.'
+    });
+
+  } catch (error) {
+    console.error('Erro em solicitarReset:', error);
+    return res.status(500).json({ mensagem: 'Erro interno do servidor.' });
+  }
+};
+
 module.exports = {
   login,
   loginComId,
   validarCodigoRecuperacao,
   resetarSenha,
+  firstLoginChangePassword,
+  solicitarReset,
 };

@@ -40,6 +40,24 @@ const getAllUsers = async (req, res) => {
   }
 };
 
+// --- BUSCAR USUÁRIOS COM STATUS DE CONEXÃO ---
+const getOnlineUsers = async (req, res) => {
+  try {
+    const query = `
+      SELECT id, nome, foto_url, ultimo_acesso
+      FROM usuario 
+      WHERE id != $1
+      ORDER BY ultimo_acesso DESC NULLS LAST
+      LIMIT 8
+    `;
+    const { rows } = await pool.query(query, [req.usuario.id]);
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error("Erro ao buscar usuários:", error);
+    res.status(500).json({ mensagem: "Erro ao buscar usuários." });
+  }
+};
+
 // --- 2. CRIAR NOVO USUÁRIO ---
 const createUser = async (req, res) => {
   const { nome, email, senha, tipo_usuario, foto_url } = req.body;
@@ -85,19 +103,41 @@ const getUserById = async (req, res) => {
     }
 };
 
-// --- 4. ATUALIZAR UM USUÁRIO ---
+// --- 3. ATUALIZAR USUÁRIO EXISTENTE ---
 const updateUser = async (req, res) => {
     const { id } = req.params;
-    const { nome, email, tipo_usuario, foto_url } = req.body;
+    let { nome, email, tipo_usuario, foto_url, senha } = req.body;
+
+    if (req.file) {
+        foto_url = `/uploads/${req.file.filename}`;
+    }
+
     if (!nome || !email || !tipo_usuario) {
         return res.status(400).json({ message: 'Nome, email e tipo de usuário são obrigatórios.' });
     }
+
     try {
-        const query = `
-            UPDATE usuario SET nome = $1, email = $2, tipo_usuario = $3, foto_url = $4
-            WHERE id = $5 RETURNING id, nome, email, tipo_usuario, foto_url;
-        `;
-        const { rows } = await pool.query(query, [nome, email, tipo_usuario, foto_url, id]);
+        let query;
+        let params;
+        
+        if (senha) {
+            const salt = await bcrypt.genSalt(10);
+            const senha_hash = await bcrypt.hash(senha, salt);
+            query = `
+                UPDATE usuario SET nome = $1, email = $2, tipo_usuario = $3, foto_url = $4, senha_hash = $5, must_change_password = TRUE
+                WHERE id = $6 RETURNING id, nome, email, tipo_usuario, foto_url;
+            `;
+            params = [nome, email, tipo_usuario, foto_url, senha_hash, id];
+        } else {
+            query = `
+                UPDATE usuario SET nome = $1, email = $2, tipo_usuario = $3, foto_url = $4
+                WHERE id = $5 RETURNING id, nome, email, tipo_usuario, foto_url;
+            `;
+            params = [nome, email, tipo_usuario, foto_url, id];
+        }
+
+        const { rows } = await pool.query(query, params);
+
         if (rows.length === 0) {
             return res.status(404).json({ message: 'Usuário não encontrado para atualizar.' });
         }
@@ -148,4 +188,5 @@ module.exports = {
   getUserById,
   updateUser,
   deleteUser,
+  getOnlineUsers
 };

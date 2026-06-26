@@ -13,13 +13,14 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   BookOpen,
   User,
   LogOut,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Search,
   Bell,
   Sun,
@@ -33,6 +34,7 @@ import { useNotifications } from '@/contexts/NotificationContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import NotificationPanel from '@/components/NotificationPanel';
 import { useTemPreferencias } from '@/lib/hooks/useRecomendacoes';
+import api from '@/services/api';
 
 const NavLink = ({ href, icon: Icon, label, onClick, isCollapsed, badge, badgeOrange }: {
   href: string;
@@ -93,6 +95,7 @@ export const SidebarAluno = () => {
   const { theme, toggleTheme } = useTheme();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
+  const [isUsersOpen, setIsUsersOpen] = useState(false);
   const { data: prefData } = useTemPreferencias();
   const semPreferencias = prefData ? !prefData.temPreferencias : false;
 
@@ -104,12 +107,71 @@ export const SidebarAluno = () => {
     { href: '/aluno/perfil', icon: User, label: 'Meu Perfil' },
   ];
 
-  // Usuários online (exemplo - você pode buscar do backend depois)
-  const onlineUsers = [
-    { id: 1, nome: 'Erik Gunsel', iniciais: 'EG', color: 'from-pink-500 to-purple-500' },
-    { id: 2, nome: 'Emily Smith', iniciais: 'ES', color: 'from-blue-500 to-cyan-500' },
-    { id: 3, nome: 'Arthur Adelk', iniciais: 'AA', color: 'from-green-500 to-emerald-500' },
-  ];
+  // Estado para os usuários com status de conexão
+  const [onlineUsers, setOnlineUsers] = useState<any[]>([]);
+
+  // Helper: calcula tempo relativo (há X min, há X horas, etc.)
+  const getTempoRelativo = (ultimoAcesso: string | null): { texto: string; online: boolean } => {
+    if (!ultimoAcesso) {
+      return { texto: 'Nunca se conectou', online: false };
+    }
+
+    const agora = new Date();
+    const ultimo = new Date(ultimoAcesso);
+    const diffMs = agora.getTime() - ultimo.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    const diffHoras = Math.floor(diffMin / 60);
+    const diffDias = Math.floor(diffHoras / 24);
+    const diffMeses = Math.floor(diffDias / 30);
+
+    // Online = ativo nos últimos 5 minutos
+    if (diffMin < 5) return { texto: 'Online agora', online: true };
+    if (diffMin < 60) return { texto: `há ${diffMin} min`, online: false };
+    if (diffHoras === 1) return { texto: 'há 1 hora', online: false };
+    if (diffHoras < 24) return { texto: `há ${diffHoras} horas`, online: false };
+    if (diffDias === 1) return { texto: 'há 1 dia', online: false };
+    if (diffDias < 30) return { texto: `há ${diffDias} dias`, online: false };
+    if (diffMeses === 1) return { texto: 'há 1 mês', online: false };
+    if (diffMeses < 12) return { texto: `há ${diffMeses} meses`, online: false };
+    return { texto: 'há muito tempo', online: false };
+  };
+
+  // Buscar usuários
+  useEffect(() => {
+    const fetchOnlineUsers = async () => {
+      try {
+        const { data } = await api.get('/usuarios/online');
+        const colors = [
+          'from-pink-500 to-purple-500',
+          'from-blue-500 to-cyan-500',
+          'from-green-500 to-emerald-500',
+          'from-orange-500 to-red-500',
+          'from-indigo-500 to-blue-500'
+        ];
+        const formattedUsers = data.map((user: any, index: number) => {
+          const names = user.nome?.split(' ') || ['U'];
+          const initials = names.length >= 2 
+            ? (names[0].charAt(0) + names[1].charAt(0)).toUpperCase()
+            : names[0].charAt(0).toUpperCase();
+          const status = getTempoRelativo(user.ultimo_acesso);
+
+          return {
+            id: user.id,
+            nome: user.nome,
+            foto_url: user.foto_url,
+            iniciais: initials,
+            color: colors[index % colors.length],
+            online: status.online,
+            statusTexto: status.texto,
+          };
+        });
+        setOnlineUsers(formattedUsers);
+      } catch (error) {
+        console.error('Erro ao buscar usuários:', error);
+      }
+    };
+    fetchOnlineUsers();
+  }, []);
 
   // Primeira letra do nome para avatar fallback
   const getInitials = (name: string) => {
@@ -171,14 +233,11 @@ export const SidebarAluno = () => {
           <div className="relative group flex-shrink-0">
             {usuario?.foto_url ? (
               <div className={`${isCollapsed ? 'w-10 h-10' : 'w-12 h-12'} rounded-full overflow-hidden ring-2 ring-blue-200 dark:ring-blue-700 shadow-md`}>
-                <Image
+                <img
                   src={usuario.foto_url}
                   alt={usuario.nome}
-                  width={isCollapsed ? 40 : 48}
-                  height={isCollapsed ? 40 : 48}
-                  sizes={isCollapsed ? "40px" : "48px"}
                   className="w-full h-full object-cover"
-                  quality={95}
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                 />
               </div>
             ) : (
@@ -234,30 +293,76 @@ export const SidebarAluno = () => {
         ))}
       </nav>
 
-      {/* Usuários Online */}
+      {/* Usuários — Colapsável */}
       {!isCollapsed && (
-        <div className="px-4 pb-4 border-t border-gray-200 dark:border-gray-800 pt-4">
-          <div className="flex items-center justify-between mb-3 px-2">
-            <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-              Usuários Online
-            </span>
-            <button className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-xl font-light">
-              +
-            </button>
-          </div>
-          <div className="space-y-2">
-            {onlineUsers.map((user) => (
-              <button
-                key={user.id}
-                className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-all duration-200 w-full"
-              >
-                <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${user.color} flex items-center justify-center text-white text-xs font-bold shadow-sm`}>
-                  {user.iniciais}
-                </div>
-                <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">{user.nome}</span>
-              </button>
-            ))}
-          </div>
+        <div className="border-t border-gray-200 dark:border-gray-800">
+          <button
+            onClick={() => setIsUsersOpen(!isUsersOpen)}
+            className="flex items-center justify-between w-full px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                Usuários
+              </span>
+              {onlineUsers.filter(u => u.online).length > 0 && (
+                <span className="bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                  {onlineUsers.filter(u => u.online).length}
+                </span>
+              )}
+            </div>
+            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isUsersOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {isUsersOpen && (
+            <div className="px-4 pb-4 space-y-1 max-h-[220px] overflow-y-auto scrollbar-hide">
+              {onlineUsers.map((user) => (
+                <button
+                  key={user.id}
+                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-all duration-200 w-full"
+                >
+                  <div className="relative flex-shrink-0">
+                    {user.foto_url ? (
+                      <div className={`w-8 h-8 rounded-full overflow-hidden ring-1 shadow-sm ${
+                        user.online 
+                          ? 'ring-green-400 dark:ring-green-600' 
+                          : 'ring-gray-300 dark:ring-gray-600 opacity-60'
+                      }`}>
+                        <img
+                          src={user.foto_url}
+                          alt={user.nome}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      </div>
+                    ) : (
+                      <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${user.color} flex items-center justify-center text-white text-xs font-bold shadow-sm ${
+                        !user.online ? 'opacity-60' : ''
+                      }`}>
+                        {user.iniciais}
+                      </div>
+                    )}
+                    <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-gray-900 shadow-sm ${
+                      user.online 
+                        ? 'bg-green-500 animate-pulse' 
+                        : 'bg-gray-400 dark:bg-gray-600'
+                    }`}></div>
+                  </div>
+                  <div className="flex flex-col items-start min-w-0 flex-1">
+                    <span className={`text-sm font-medium truncate w-full text-left ${
+                      user.online 
+                        ? 'text-gray-800 dark:text-gray-200' 
+                        : 'text-gray-500 dark:text-gray-400'
+                    }`}>{user.nome}</span>
+                    <span className={`text-[10px] leading-tight ${
+                      user.online 
+                        ? 'text-green-600 dark:text-green-400 font-medium' 
+                        : 'text-gray-400 dark:text-gray-500'
+                    }`}>{user.statusTexto}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

@@ -9,6 +9,7 @@ import { BookCheck, CalendarClock, ChevronLeft, LoaderCircle } from "lucide-reac
 import api from '@/services/api';
 import ReservationModal from '@/components/ReservationModal';
 import SuccessModal from '@/components/SuccessModal'; // Importa o novo modal de sucesso
+import AvaliacoesLivro from '@/components/AvaliacoesLivro';
 
 // Define a "forma" completa dos dados de um livro
 interface BookDetails {
@@ -153,6 +154,9 @@ export default function LivroDetalhesPage() {
                 </div>
               </div>
             </div>
+
+            {/* Avaliações escritas dos leitores */}
+            <AvaliacoesLivro livroId={id} />
           </div>
         </div>
 
