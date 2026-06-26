@@ -187,26 +187,39 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 
 ---
 
-## Funcionalidades Implementadas
+## Detalhamento das Funcionalidades Desenvolvidas
 
-- Autenticação com e-mail/senha e Google OAuth 2.0
-- Recuperação de senha por código de verificação enviado por e-mail
-- Controle de permissões por perfil (Aluno, Bibliotecário, Admin)
-- Rastreamento de sessões ativas com heartbeat e logs de acesso
-- CRUD completo de Livros (com Integração API Google Books Search para autocompletar dados)
-- CRUD completo de Usuários
-- CRUD de Autores e Categorias
-- Gestão unificada de Empréstimos e Reservas (tabela `emprestimo`)
-- Sistema de Preferências literárias do aluno (categorias e autores favoritos)
-- Recomendações personalizadas por algoritmo 100% SQL (função `recomendar_livros`)
-- Notificações em tempo real (reserva confirmada, prazo vencendo, boas-vindas etc.)
-- Controle de domínios de e-mail institucionais permitidos para login Google
-- Modais modernos com Backdrop Blur em todos os CRUDs
-- Painel Administrativo unificado com Sidebar expansível inteligente
-- **CRUD Completo de Avaliações (Rating/Reviews):**
-  - Alunos podem avaliar e deixar resenhas sobre livros lidos (com nota de 1 a 5 estrelas).
-  - Listagem pública de avaliações nas páginas de detalhes dos livros.
-  - Painel administrativo (`/dashboard/avaliacoes`) para o Admin/Bibliotecário arquivar ou remover resenhas que violem as regras da comunidade.
+O projeto foi construído focando em uma experiência de usuário (UX) premium e uma arquitetura robusta no backend. Abaixo estão os detalhes de todas as principais entregas desenvolvidas:
+
+### 1. Autenticação e Gestão de Perfis de Acesso
+- **Segurança com JWT e bcrypt:** Autenticação totalmente *stateless* e criptografia de senhas.
+- **Três Níveis de Acesso:**
+  - **Administrador:** Controle absoluto. Gerencia integrações de API, parâmetros globais do sistema, auditoria de logs de acesso e permissões de domínios.
+  - **Bibliotecário:** Focado na operação. Gerencia o acervo (livros, categorias, autores), usuários comuns e fluxo de empréstimos e devoluções.
+  - **Aluno:** Focado no consumo. Acesso ao catálogo público, avaliações, sistema de reservas e painel de controle pessoal (meus empréstimos).
+- **Controle de Domínios (OAuth):** Restrição de cadastro via Google OAuth apenas para domínios institucionais específicos.
+
+### 2. Interface Moderna e Painel Administrativo (Dashboard)
+- **Sidebar Dinâmica e Unificada:** O menu lateral se adapta magicamente às permissões do usuário logado, exibindo apenas as opções condizentes com o seu perfil, e suportando submenus sanfonados (ex: *Gerenciar Biblioteca* expandindo para Livros, Autores e Categorias).
+- **Modais em Glassmorphism:** Rompendo com o padrão de telas inteiras para formulários, todos os CRUDs (Criar, Editar, Excluir) abrem em janelas sobrepostas (*Modais*) com efeito de fundo desfocado (`backdrop-blur`). Isso garante agilidade, pois o usuário não perde o contexto da página em que estava.
+- **Dark Mode Nativo:** Todo o sistema foi projetado suportando transição fluida entre tema claro e tema escuro.
+
+### 3. Integração Inteligente com API do Google Books
+- **Autopreenchimento de Acervo:** Durante o cadastro ou edição de um livro, o Bibliotecário/Admin não precisa digitar todos os dados manualmente. Através de um modal de busca integrado à API pública do **Google Books**, basta digitar o título da obra e o sistema importa automaticamente:
+  - Título completo e ISBN
+  - Sinopse (resumo da obra)
+  - Número de páginas e ano de publicação
+  - **Capa oficial do livro** (URL importada diretamente e renderizada no painel)
+
+### 4. CRUD Completo de Avaliações (Rating & Reviews)
+- **Engajamento do Aluno:** O aluno pode avaliar qualquer livro que leu, atribuindo uma nota de 1 a 5 estrelas e escrevendo uma resenha detalhada.
+- **Exibição Pública:** As avaliações formam uma "rede social" literária na página de detalhes de cada livro, ajudando outros alunos a decidirem suas leituras.
+- **Moderação Administrativa:** Foi criado um painel exclusivo (`/dashboard/avaliacoes`) onde o Bibliotecário ou Admin podem revisar as avaliações publicadas. Resenhas que violem diretrizes da comunidade podem ser ocultadas (arquivadas) instantaneamente.
+
+### 5. Gestão de Acervo e Empréstimos (Core Business)
+- **Categorias e Autores:** Tabelas dedicadas e relacionamentos N:N com os livros, permitindo que uma obra tenha múltiplos autores ou múltiplas categorias.
+- **Sistema de Empréstimos e Reservas:** Controle de ponta a ponta do ciclo de vida de um livro. O aluno reserva, o bibliotecário aprova (convertendo em empréstimo) e, por fim, registra a devolução.
+- **Recomendações Nativas (SQL):** Uma função (`recomendar_livros`) construída direto no PostgreSQL cruza as preferências cadastradas pelo aluno (autores e categorias favoritas) com o acervo para sugerir novas leituras na página inicial.
 
 ## API — Endpoints
 
