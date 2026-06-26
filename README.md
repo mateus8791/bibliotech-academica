@@ -3,7 +3,7 @@
 Sistema web para gestão de bibliotecas acadêmicas, desenvolvido para escolas e faculdades. Permite o controle de acervo, empréstimos, reservas e oferece uma experiência personalizada de descoberta de leitura para os alunos.
 
 **Desenvolvedor:** Mateus Conte
-**Curso:** Análise e Desenvolvimento de Sistemas — Unochapecó
+**Curso:** Ciências da Computação — Unochapecó
 
 ---
 
