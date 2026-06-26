@@ -203,9 +203,10 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 - Controle de domínios de e-mail institucionais permitidos para login Google
 - Modais modernos com Backdrop Blur em todos os CRUDs
 - Painel Administrativo unificado com Sidebar expansível inteligente
-- **CRUD de Avaliações de Livros** *(em desenvolvimento)*
-
----
+- **CRUD Completo de Avaliações (Rating/Reviews):**
+  - Alunos podem avaliar e deixar resenhas sobre livros lidos (com nota de 1 a 5 estrelas).
+  - Listagem pública de avaliações nas páginas de detalhes dos livros.
+  - Painel administrativo (`/dashboard/avaliacoes`) para o Admin/Bibliotecário arquivar ou remover resenhas que violem as regras da comunidade.
 
 ## API — Endpoints
 
